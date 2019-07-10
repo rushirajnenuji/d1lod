@@ -1,0 +1,54 @@
+version: "3"
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.3
+    container_name: elasticsearch
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.1.1
+    ports:
+      - "127.0.0.1:5601:5601"
+    links:
+      - elasticsearch:elasticsearch
+
+  logstash:
+    image: logstash:6.6.1
+    links:
+      - elasticsearch
+    environment:
+      LOGSPOUT: 'ignore'
+    volumes:
+      - ./logstash/config:/config-dir
+    command: -f es-home/logstash.conf
+
+  logspout:
+    image: gliderlabs/logspout:latest
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+    command: syslog://logstash:5000
+    links:
+      - logstash
+
+  cadvisor:
+    image: google/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "127.0.0.1:8888:8080"
+
+
+volumes:
+  www-home: {}
+  virtuoso-home: {}
+  redis-home: {}
